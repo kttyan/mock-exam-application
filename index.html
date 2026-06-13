@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>総合模擬試験アプリ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon-192x192.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .hidden {
+            display: none !important;
+        }
+        .btn-selected {
+            --tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);
+            --tw-ring-shadow: var(--tw-ring-inset) 0 0 0 calc(2px + var(--tw-ring-offset-width)) var(--tw-ring-color);
+            box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000);
+            --tw-ring-color: #3b82f6; /* ring-blue-500 */
+            border-color: #3b82f6; /* border-blue-500 */
+            background-color: #eff6ff; /* bg-blue-50 */
+        }
+        #results-summary::-webkit-scrollbar,
+        #question-grid::-webkit-scrollbar { 
+            width: 8px; 
+        }
+        #results-summary::-webkit-scrollbar-track,
+        #question-grid::-webkit-scrollbar-track { 
+            background: #f1f1f1; 
+            border-radius: 10px; 
+        }
+        #results-summary::-webkit-scrollbar-thumb,
+        #question-grid::-webkit-scrollbar-thumb { 
+            background: #a8a8a8; 
+            border-radius: 10px; 
+        }
+        #results-summary::-webkit-scrollbar-thumb:hover,
+        #question-grid::-webkit-scrollbar-thumb:hover { 
+            background: #7a7a7a; 
+        }
+
+        /* モーダル共通スタイル */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 50;
+            opacity: 0;
+            transition: opacity 0.2s ease-in-out;
+            pointer-events: none;
+        }
+        .modal-overlay.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .modal-content {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            width: 90%;
+            max-width: 500px;
+            transform: scale(0.95);
+            transition: transform 0.2s ease-in-out;
+        }
+        .modal-overlay.visible .modal-content {
+            transform: scale(1);
+        }
+
+        /* 問題一覧グリッドボタン */
+        .question-grid-btn {
+            width: 45px;
+            height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid #d1d5db; /* border-gray-300 */
+            background-color: #ffffff; /* bg-white */
+            border-radius: 0.5rem; /* rounded-lg */
+            font-weight: 600; /* font-semibold */
+            transition: all 0.2s;
+        }
+        .question-grid-btn:hover {
+            background-color: #f9fafb; /* hover:bg-gray-50 */
+        }
+        .question-grid-btn.answered {
+            background-color: #d1fae5; /* bg-green-100 */
+            border-color: #6ee7b7; /* border-green-300 */
+            color: #065f46; /* text-green-800 */
+        }
+        .question-grid-btn.current {
+            border-color: #3b82f6; /* border-blue-500 */
+            box-shadow: 0 0 0 2px #3b82f6; /* ring-2 ring-blue-500 */
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 flex items-center justify-center min-h-screen p-4">
+
+    <div id="app-container" class="w-full max-w-3xl mx-auto bg-white rounded-xl shadow-lg p-6 md:p-8">
+
+        <div id="subject-screen">
+            <h1 class="text-3xl font-bold text-center mb-2 text-gray-700">総合模擬試験アプリ</h1>
+            <h2 class="text-xl font-semibold text-center mb-8 text-gray-500">科目選択</h2>
+            <p class="text-center mb-6">学習したい科目を選択してください。</p>
+            <div id="subject-list" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                </div>
+        </div>
+
+        <div id="home-screen" class="hidden">
+            <div class="flex justify-between items-center mb-4 border-b pb-2">
+                <button id="back-to-subject-btn" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors">← 科目一覧に戻る</button>
+            </div>
+            <h1 id="subject-title-display" class="text-3xl font-bold text-center mb-2 text-gray-700">【科目名】</h1>
+            <h2 class="text-xl font-semibold text-center mb-8 text-gray-500">模擬試験</h2>
+            <p class="text-center mb-6" id="subject-description-display">挑戦したいバージョンを選択してください。</p>
+            <div id="version-selection" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                </div>
+        </div>
+
+        <div id="quiz-screen" class="hidden">
+            <div id="quiz-header" class="flex justify-between items-center mb-4 border-b pb-2">
+                <div id="question-counter" class="text-md font-semibold text-gray-600"></div>
+                <div class="flex items-center space-x-2">
+                    <button id="question-list-btn" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors">一覧</button>
+                    <button id="results-btn" class="px-5 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>結果へ</button>
+                    <button id="home-btn-quiz" class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors">ホーム</button>
+                </div>
+            </div>
+            <div class="mb-6">
+                <p id="question-text" class="text-xl leading-relaxed min-h-[8rem] flex items-center"></p>
+            </div>
+            <div id="answer-options" class="space-y-3">
+                </div>
+            <div id="feedback-section" class="hidden mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <p id="feedback-title" class="text-xl font-bold mb-3"></p>
+                <div id="explanation-content" class="text-gray-700 text-left leading-relaxed space-y-3"></div>
+            </div>
+            <div id="navigation-section" class="mt-8 flex justify-between items-center">
+                <button id="prev-btn" class="px-5 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">前の問題へ</button>
+                <button id="submit-btn" class="px-5 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">回答する</button>
+                <button id="next-btn" class="px-5 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">次の問題へ</button>
+            </div>
+        </div>
+
+        <div id="results-screen" class="hidden">
+            <h2 class="text-3xl font-bold text-center mb-4 text-gray-700">試験結果</h2>
+            <div class="text-center p-4 mb-6 bg-indigo-50 rounded-lg">
+                <p id="score-text" class="text-2xl font-bold text-indigo-600"></p>
+            </div>
+            <h3 class="text-xl font-semibold mb-4 border-b pb-2">問題の復習</h3>
+            <div id="results-summary" class="space-y-6 max-h-[60vh] overflow-y-auto pr-2">
+                </div>
+            <div class="text-center mt-8">
+                <button id="home-btn-results" class="px-4 py-2 bg-sky-500 text-white rounded-lg hover:bg-sky-600 transition-colors">パターン選択に戻る</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="start-quiz-modal" class="modal-overlay">
+        <div id="start-quiz-modal-content" class="modal-content">
+            <h3 class="text-xl font-bold mb-4">学習を開始</h3>
+            <p id="start-modal-text" class="mb-6">前回の学習データが見つかりました。</p>
+            <div class="flex flex-col md:flex-row gap-3">
+                <button id="view-prev-results-btn" class="w-full md:w-1/2 px-4 py-3 bg-sky-500 text-white rounded-lg hover:bg-sky-600 transition-colors font-semibold">前回の結果を見る</button>
+                <button id="start-new-quiz-btn" class="w-full md:w-1/2 px-4 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors font-semibold">新しく始める</button>
+            </div>
+            <div class="text-center mt-4">
+                <button id="cancel-start-modal-btn" class="text-gray-500 hover:text-gray-700">キャンセル</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="question-list-modal" class="modal-overlay">
+        <div class="modal-content w-full max-w-xl">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold">問題一覧</h3>
+                <button id="close-question-list-btn" class="text-2xl text-gray-500 hover:text-gray-800">&times;</button>
+            </div>
+            <div id="question-grid" class="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 gap-2 max-h-[60vh] overflow-y-auto p-2">
+                </div>
+        </div>
+    </div>
+
+    <div id="confirm-home-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h3 class="text-xl font-bold mb-4">ホームに戻る</h3>
+            <p class="mb-6">途中でやめると、ここまでの進捗は保存されません。よろしいですか？</p>
+            <div class="flex justify-end gap-3">
+                <button id="cancel-home-btn" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors">続ける</button>
+                <button id="confirm-home-btn" class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors">ホームへ</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="alert-modal" class="modal-overlay">
+        <div class="modal-content">
+            <p id="alert-modal-text" class="mb-6 text-center text-lg"></p>
+            <div class="flex justify-center">
+                <button id="alert-modal-ok-btn" class="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="data_game_seisaku.js"></script>
+    <script src="contents_industry.js"></script>
+    <script src="linux_introduction.js"></script>
+    <script src="web-app-dev-3.js"></script>
+    <script src="editing_engineering.js"></script>
+
+    <script src="app.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('./sw.js').then(function(registration) {
+                console.log('ServiceWorker registration successful');
+                }, function(err) {
+                console.log('ServiceWorker registration failed: ', err);
+                });
+            });
+        }
+    </script>
+</body>
+</html>
