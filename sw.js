@@ -3,11 +3,15 @@ const urlsToCache = [
   './index.html',
   // ここに使用しているCSSやJSのパスを記述します
   // 科目のHTMLファイルを追加するたびに、ここへ追記する必要があります
-  './data_game_seisaku.js',
-  './contents_industry.js',
-  './linux_introduction.js',
-  './web-app-dev-3.js',
-  './editing_engineering.js',
+  './exam/data_game_seisaku.js',
+  './exam/linux_introduction.js',
+  './exam/web-app-dev-3.js',
+  './exam/editing_engineering.js',
+  './exam/anime_industry_history.js',
+  './exam/machine_translation_info.js',
+  './exam/web-app-dev-4.js',
+  './exam/python_programming.js',
+  './exam/gas_automation_efficiency.js',
 
   './app.js'
 ];
