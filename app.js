@@ -62,6 +62,170 @@ const confirmHomeBtn = document.getElementById('confirm-home-btn');
 const alertModal = document.getElementById('alert-modal');
 const alertModalText = document.getElementById('alert-modal-text');
 const alertModalOkBtn = document.getElementById('alert-modal-ok-btn');
+// ==========================================================
+// コードブロック表示用CSS
+// ==========================================================
+(function setupCodeBlockStyle() {
+    const style = document.createElement('style');
+
+    style.textContent = `
+        .quiz-code-wrapper {
+            display: block;
+            width: 100%;
+            margin: 8px 0;
+        }
+
+        .quiz-code-block {
+            display: block;
+            width: 100%;
+            box-sizing: border-box;
+
+            margin: 0;
+            padding: 8px 12px;
+
+            overflow-x: auto;
+
+            background: #1f2937;
+            color: #f9fafb;
+
+            border-radius: 0 0 8px 8px;
+            border: 1px solid #374151;
+            border-top: none;
+
+            font-family:
+                Consolas,
+                "Courier New",
+                monospace;
+
+            font-size: 14px;
+            line-height: 1.6;
+
+            text-align: left;
+            white-space: pre;
+        }
+
+        .quiz-code-language {
+            display: block;
+            padding: 5px 12px;
+            background: #374151;
+            color: #d1d5db;
+            font-size: 12px;
+
+            font-family: sans-serif;
+
+            border-radius: 8px 8px 0 0;
+        }
+
+        .quiz-code-language + .quiz-code-block {
+            border-radius: 0 0 8px 8px;
+        }
+
+        .quiz-inline-code {
+            padding: 2px 5px;
+            border-radius: 4px;
+            background: #e5e7eb;
+            color: #111827;
+
+            font-family:
+                Consolas,
+                "Courier New",
+                monospace;
+        }
+    `;
+
+    document.head.appendChild(style);
+})();
+// ==========================================================
+// 問題文・解説のMarkdown風コードブロック変換
+// ==========================================================
+function renderQuizText(text) {
+    if (text === null || text === undefined) {
+        return '';
+    }
+
+    text = String(text);
+
+    // 改行コードを統一
+    text = text.replace(/\r\n/g, '\n');
+    text = text.replace(/\r/g, '\n');
+
+    // HTMLエスケープ
+    function escapeHtml(str) {
+        return str
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    /*
+     * コードブロックを一時的なプレースホルダーに置換する。
+     *
+     * 重要：
+     * コードブロック内部の改行を、後段の <br> 変換に巻き込まない。
+     */
+    const codeBlocks = [];
+
+    text = text.replace(
+        /```([A-Za-z0-9_+#.-]*)\n([\s\S]*?)```/g,
+        function(match, language, code) {
+
+            // コード前後の余計な空行を削除
+            code = code.replace(/^\n+|\n+$/g, '');
+
+            const escapedCode = escapeHtml(code);
+
+            const codeBlock = `
+<div class="quiz-code-wrapper">
+    ${language
+        ? `<div class="quiz-code-language">${escapeHtml(language)}</div>`
+        : ''}
+    <pre class="quiz-code-block">${escapedCode}</pre>
+</div>`.trim();
+
+            const placeholder = `___QUIZ_CODE_BLOCK_${codeBlocks.length}___`;
+
+            codeBlocks.push(codeBlock);
+
+            return placeholder;
+        }
+    );
+
+    /*
+     * インラインコード
+     * 例：
+     * `Hono`
+     */
+    text = text.replace(
+        /`([^`\n]+)`/g,
+        function(match, code) {
+            return `<code class="quiz-inline-code">${escapeHtml(code)}</code>`;
+        }
+    );
+
+    /*
+     * 通常の改行だけを <br> に変換。
+     *
+     * コードブロックはプレースホルダーになっているため、
+     * コードブロック内部の改行には影響しない。
+     */
+    text = text.replace(/\n/g, '<br>');
+
+    /*
+     * コードブロックを元に戻す。
+     */
+    codeBlocks.forEach(function(codeBlock, index) {
+        const placeholder = `___QUIZ_CODE_BLOCK_${index}___`;
+
+        text = text.replace(
+            placeholder,
+            codeBlock
+        );
+    });
+
+    return text;
+}
 
 // --- EVENT LISTENERS ---
 
@@ -250,7 +414,7 @@ function displayQuestion() {
     
     const question = currentQuiz[currentQuestionIndex];
     questionCounter.innerHTML = `問題 ${currentQuestionIndex + 1} / ${currentQuiz.length}<br><span class="text-sm">提出済み: ${answeredQuestions.size}問</span>`;
-    questionText.innerHTML = question.question;
+    questionText.innerHTML = renderQuizText(question.question);
 
     answerOptions.innerHTML = '';
     question.options.forEach((option, index) => {
@@ -340,7 +504,7 @@ function showFeedback() {
     
     feedbackTitle.textContent = "正解！";
     feedbackTitle.className = "text-xl font-bold mb-3 text-green-700";
-    explanationContent.innerHTML = question.explanation;
+    explanationContent.innerHTML = renderQuizText(question.explanation);
     feedbackSection.classList.remove('hidden');
 }
 
